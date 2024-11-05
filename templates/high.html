@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plot Axes Demo</title>
+</head>
+<body>
+    <h1>Enter a Value to Generate Plot</h1>
+    <form method="post">
+        <label for="code">Enter stock code (sh000001, sh600000, sz000001):</label><br>
+	<input type="text" id="code" name="code" value="{{ request.form['code'] if request.method == 'POST' else ''}}"><br><br>
+
+        <label for="floating_rate">Enter floating_rate (1-100):</label><br>
+	<input type="text" id="floating_rate" name="floating_rate" value="{{ request.form['floating_rate'] if request.method == 'POST' else ''}}"><br><br>
+
+        <label for="days">Enter n days (n<=8):</label><br>
+        <label for="days">8天</label><br>
+
+        <button type="submit">Submit</button>
+    </form>
+
+    {% if highest_ranks %}
+    <table border="1">
+	    <tr>
+		    <th>最高价时间</th>
+		    <th>比例</th>
+	    </tr>
+	    {% for key, value in highest_ranks.items() %}
+	    <tr>
+		    <td>{{ key }}</td>
+		    <td>{{ value }}</td>
+	    </tr>
+	    {% endfor %}
+    </table>
+    {% endif %}
+</body>
+</html>
+

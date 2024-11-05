@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plot Axes Demo</title>
+</head>
+<body>
+    <h1>Enter a Value to Generate Plot</h1>
+    <form method="post">
+        <label for="code">Enter stock code (sh000001, sh600000, sz000001):</label><br>
+        <input type="text" id="code" name="code"><br><br>
+
+        <label for="days">Enter n days (n<=8):</label><br>
+        <input type="text" id="days" name="days"><br><br>
+
+        <button type="submit">Submit</button>
+    </form>
+
+    {% if axes %}
+        <h2>Axes: 5分钟交易额（元） </h2>
+        <p>{{ axes }}</p>
+        <img src="{{ url_for('plot_png', days=days, code=code) }}" alt="Generated Plot">
+    {% endif %}
+
+    {% if error %}
+        <p style="color: red;">{{ error }}</p>
+    {% endif %}
+</body>
+</html>
+
