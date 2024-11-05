@@ -10,6 +10,89 @@ import requests
 
 app = Flask(__name__)
 
+@app.route('/high5', methods=['GET', 'POST'])
+def high5low5():
+    if request.method == 'POST':
+        try:
+            # Get user input
+            # days = float(request.form['days'])
+            code = request.form['code']
+
+            stock_zh_a_minute_df = ak.stock_zh_a_minute(symbol=code, period='5')
+            #print(stock_zh_a_minute_df)
+            minutes = stock_zh_a_minute_df["day"]
+            highs = stock_zh_a_minute_df["high"]
+            lows = stock_zh_a_minute_df["low"]
+            data_len = len(stock_zh_a_minute_df)
+            init = False
+            highest = 0.0
+            highest_minute = "xx"
+            highest_ranks = {}
+
+            lowest = 1000000.0
+            lowest_minute = "xx"
+            lowest_ranks = {}
+            
+            for i in range(data_len):
+                minutes_cur = minutes[i].split(" ")[1]
+                # 排除不完整的一天的数据
+                if not init:
+                    if minutes_cur == "09:35:00":
+                        init = True
+                    else:
+                        continue
+                high_cur = float(highs[i])
+                if highest < high_cur:
+                    highest = high_cur
+                    highest_minute = minutes_cur
+            
+                low_cur = float(lows[i])
+                if lowest > low_cur:
+                    lowest = low_cur
+                    lowest_minute = minutes_cur
+                else:
+                    pass
+            
+                # 完整的一天结束了，存放到highest_ranks.
+                if minutes_cur == "15:00:00":
+                    if highest_minute in highest_ranks:
+                        highest_ranks[highest_minute] += 1
+                    else:
+                        highest_ranks[highest_minute] = 1
+                    highest = 0.0
+                    if lowest_minute in lowest_ranks:
+                        lowest_ranks[lowest_minute] += 1
+                    else:
+                        lowest_ranks[lowest_minute] = 1
+                    lowest = 1000000.0
+            
+            total_times = 0
+            for key, value in highest_ranks.items():
+                total_times += value
+            print(total_times)
+            for key, value in highest_ranks.items():
+                highest_ranks[key] = round(value / total_times, 4)
+            print(highest_ranks)
+            # sort by value in desc
+            highest_ranks = {key: value for key, value in sorted(highest_ranks.items(), key=lambda item: item[1], reverse=True)}
+            print(highest_ranks)
+
+            total_times = 0
+            for key, value in lowest_ranks.items():
+                total_times += value
+            print(total_times)
+            for key, value in lowest_ranks.items():
+                lowest_ranks[key] = round(value / total_times, 4)
+            print(lowest_ranks)
+            lowest_ranks = {key: value for key, value in sorted(lowest_ranks.items(), key=lambda item: item[1], reverse=True)}
+            print(lowest_ranks)
+
+            return render_template('high5.html', highest_ranks=highest_ranks, lowest_ranks=lowest_ranks)
+        except ValueError:
+            return render_template('high5.html', error="Please enter a valid number.")
+
+    return render_template('high5.html')
+
 
 @app.route('/high', methods=['GET', 'POST'])
 def high():
