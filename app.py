@@ -7,6 +7,7 @@ import matplotlib.dates as mdates
 from datetime import datetime, timedelta
 import pandas as pd
 import requests
+import json
 
 app = Flask(__name__)
 
@@ -181,7 +182,7 @@ def high():
 
 @app.route('/high/plot.png')
 def plot_png2():
-    days = float(request.args.get('days', 1))
+    days = float(request.args.get('days', '1'))
     code = request.args.get('code', 'sh000001')
 
     # Generate the plot again to send the image
@@ -240,9 +241,65 @@ def index():
 
     return render_template('index.html')
 
+@app.route('/volume', methods=['GET', 'POST'])
+def volume():
+    if request.method == 'POST':
+        try:
+            # Get user input
+            days = request.form['days']
+            code = request.form['code']
+            period = request.form['period']
+
+
+            # Generate the plot
+            fig, ax = plt.subplots()
+            x = [1, 2, 3, 4, 5]
+            y = [days * i for i in x]
+            ax.plot(x, y)
+            ax.set_xlabel('X-axis Label')
+            ax.set_ylabel('Y-axis Label')
+            ax.set_title('Plot Title')
+            ax.grid(True)
+
+            # Save the plot to a BytesIO object
+            img = io.BytesIO()
+            plt.savefig(img, format='png')
+            img.seek(0)
+            plt.close()
+
+            # Extract axes limits
+            x_lim = ax.get_xlim()
+            y_lim = ax.get_ylim()
+
+            return render_template('volume.html', axes=f"1", days=days, code=code, period=period)
+        except ValueError:
+            return render_template('volume.html', error="Please enter a valid number.")
+
+    return render_template('volume.html')
+
+
+@app.route('/volume.png')
+def volume_png():
+    days = request.args.get('days', '1')
+    code = request.args.get('code', 'sh000001')
+    period = request.args.get('period', '1')
+
+    # Generate the plot again to send the image
+    if period == '1':
+        generateVolume1MinPlot(code, days, period)
+    elif period == '5':
+        generateVolume5MinPlot(code, days, period)
+
+    img = io.BytesIO()
+    plt.savefig(img, format='png')
+    img.seek(0)
+    plt.close()
+
+    return send_file(img, mimetype='image/png')
+
 @app.route('/plot.png')
 def plot_png():
-    days = float(request.args.get('days', 1))
+    days = float(request.args.get('days', '1'))
     code = request.args.get('code', 'sh000001')
 
     # Generate the plot again to send the image
@@ -267,6 +324,7 @@ def plot_png():
     return send_file(img, mimetype='image/png')
 
 
+# 能处理5分钟的情况，但1分钟的只有660条数据
 def bond_zh_hs_cov_min(
     symbol: str = "sz128039",
     period: str = "15",
@@ -401,6 +459,300 @@ def bond_zh_hs_cov_min(
             ]
         ]
         return temp_df
+
+
+def stock_zh_a_minute_my(
+    symbol: str = "sh000001", period: str = "5", adjust: str = "", days: str = "1"
+) -> pd.DataFrame:
+    """
+    股票及股票指数历史行情数据-分钟数据
+    https://finance.sina.com.cn/realstock/company/sh600519/nc.shtml
+    :param symbol: sh000300
+    :type symbol: str
+    :param period: 1, 5, 15, 30, 60 分钟的数据
+    :type period: str
+    :param adjust: 默认为空: 返回不复权的数据; qfq: 返回前复权后的数据; hfq: 返回后复权后的数据;
+    :type adjust: str
+    :return: specific data
+    :rtype: pandas.DataFrame
+    """
+    url = (
+        "https://quotes.sina.cn/cn/api/jsonp_v2.php/=/CN_MarketDataService.getKLineData"
+    )
+    iperiod = int(period)
+    datalen = 60*4/iperiod*(int(days)+1)
+    datalen = min(datalen, 1970)
+    params = {
+        "symbol": symbol,
+        "scale": period,
+        "ma": "no",
+        #"datalen": "1970",
+        "datalen": datalen,
+    }
+    r = requests.get(url, params=params)
+    data_text = r.text
+    try:
+        data_json = json.loads(data_text.split("=(")[1].split(");")[0])
+        temp_df = pd.DataFrame(data_json).iloc[:, :7]
+    except:  # noqa: E722
+        url = f"https://quotes.sina.cn/cn/api/jsonp_v2.php/var%20_{symbol}_{period}_1658852984203=/CN_MarketDataService.getKLineData"
+        params = {
+            "symbol": symbol,
+            "scale": period,
+            "ma": "no",
+            "datalen": datalen,
+        }
+        r = requests.get(url, params=params)
+        data_text = r.text
+        data_json = json.loads(data_text.split("=(")[1].split(");")[0])
+        temp_df = pd.DataFrame(data_json).iloc[:, :7]
+    if temp_df.empty:
+        print(f"{symbol} 股票数据不存在，请检查是否已退市")
+        return pd.DataFrame()
+    try:
+        stock_zh_a_daily(symbol=symbol, adjust="qfq")
+    except:  # noqa: E722
+        return temp_df
+
+    if adjust == "":
+        return temp_df
+
+    if adjust == "qfq":
+        temp_df[["date", "time"]] = temp_df["day"].str.split(" ", expand=True)
+        # 处理没有最后一分钟的情况
+        need_df = temp_df[
+            [
+                True if "09:31:00" <= item <= "15:00:00" else False
+                for item in temp_df["time"]
+            ]
+        ]
+        need_df.drop_duplicates(subset=["date"], keep="last", inplace=True)
+        need_df.index = pd.to_datetime(need_df["date"])
+        stock_zh_a_daily_qfq_df = stock_zh_a_daily(symbol=symbol, adjust="qfq")
+        stock_zh_a_daily_qfq_df.index = pd.to_datetime(stock_zh_a_daily_qfq_df["date"])
+        result_df = stock_zh_a_daily_qfq_df.iloc[-len(need_df) :, :]["close"].astype(
+            float
+        ) / need_df["close"].astype(float)
+        temp_df.index = pd.to_datetime(temp_df["date"])
+        merged_df = pd.merge(temp_df, result_df, left_index=True, right_index=True)
+        merged_df["open"] = merged_df["open"].astype(float) * merged_df["close_y"]
+        merged_df["high"] = merged_df["high"].astype(float) * merged_df["close_y"]
+        merged_df["low"] = merged_df["low"].astype(float) * merged_df["close_y"]
+        merged_df["close"] = merged_df["close_x"].astype(float) * merged_df["close_y"]
+        temp_df = merged_df[["day", "open", "high", "low", "close", "volume"]]
+        temp_df.reset_index(drop=True, inplace=True)
+        return temp_df
+    if adjust == "hfq":
+        temp_df[["date", "time"]] = temp_df["day"].str.split(" ", expand=True)
+        # 处理没有最后一分钟的情况
+        need_df = temp_df[
+            [
+                True if "09:31:00" <= item <= "15:00:00" else False
+                for item in temp_df["time"]
+            ]
+        ]
+        need_df.drop_duplicates(subset=["date"], keep="last", inplace=True)
+        need_df.index = pd.to_datetime(need_df["date"])
+        stock_zh_a_daily_hfq_df = stock_zh_a_daily(symbol=symbol, adjust="hfq")
+        stock_zh_a_daily_hfq_df.index = pd.to_datetime(stock_zh_a_daily_hfq_df["date"])
+        result_df = stock_zh_a_daily_hfq_df.iloc[-len(need_df) :, :]["close"].astype(
+            float
+        ) / need_df["close"].astype(float)
+        temp_df.index = pd.to_datetime(temp_df["date"])
+        merged_df = pd.merge(temp_df, result_df, left_index=True, right_index=True)
+        merged_df["open"] = merged_df["open"].astype(float) * merged_df["close_y"]
+        merged_df["high"] = merged_df["high"].astype(float) * merged_df["close_y"]
+        merged_df["low"] = merged_df["low"].astype(float) * merged_df["close_y"]
+        merged_df["close"] = merged_df["close_x"].astype(float) * merged_df["close_y"]
+        temp_df = merged_df[["day", "open", "high", "low", "close", "volume"]]
+        temp_df.reset_index(drop=True, inplace=True)
+        return temp_df
+
+
+def generateVolume5MinPlot(code, ndays, period):
+    time9 = datetime.strptime('09:35:00', '%H:%M:%S')
+    print(time9)
+
+    minutes_range1 = pd.date_range(start='09:35:00', end='11:30:00', freq='5min')
+    minutes_range2 = pd.date_range(start='13:05:00', end='15:00:00', freq='5min')
+    minutes_range = minutes_range1.append(minutes_range2)
+
+    volumes_total = [float(0) for i in range(len(minutes_range))]
+    volumes_multiple = [int(0) for i in range(len(minutes_range))]
+    volumes_today = [float(0) for i in range(len(minutes_range))]
+
+    today = datetime.today()
+    today_date = today.strftime('%Y-%m-%d')
+
+    #stock_zh_a_minute_df = ak.stock_zh_a_minute(symbol='sh000001', period='1', adjust="")
+    #print(stock_zh_a_minute_df)
+    #minutes = stock_zh_a_minute_df['day']
+    #volumes = stock_zh_a_minute_df['volume']
+
+    """
+    stock_zh_a_minute_df = bond_zh_hs_cov_min(
+        symbol=code,
+        period="5",
+        adjust="",
+        start_date="1979-09-01 09:32:00",
+        end_date="2222-01-01 09:32:00",
+        ndays=ndays,
+    )
+    minutes = stock_zh_a_minute_df['时间']
+    volumes = stock_zh_a_minute_df['成交额']
+    """
+    #stock_zh_a_minute_df = ak.stock_zh_a_minute(symbol=code, period="5")
+    stock_zh_a_minute_df = stock_zh_a_minute_my(symbol=code, period="5", days=ndays)
+    print(stock_zh_a_minute_df)
+    minutes = stock_zh_a_minute_df['day']
+    volumes = stock_zh_a_minute_df['volume']
+
+    data_len = len(stock_zh_a_minute_df)
+    print(data_len)
+    for i in range(data_len):
+        time_cur = datetime.strptime(minutes[i].split(" ")[1], '%H:%M:%S')
+        offset_in_minutes = time_cur-time9
+        index = offset_in_minutes.total_seconds() / 60 / 5
+        index = int(index)
+        # if it's in the afternoon, need to minus "1 hour and a half"
+        if index >= 12*2:
+            index = index - 12 - 6
+        if minutes[i].split(" ")[0] == today_date:
+            # today's data
+            volumes_today[index] = float(volumes[i])
+        else:
+            # history's data
+            volumes_total[index] += float(volumes[i])
+            volumes_multiple[index] += 1
+
+    # calc the average
+    minutes_range_len = len(minutes_range)
+    today_latest_index = 0
+    for i in range(minutes_range_len):
+        if volumes_multiple[i] >= 1:
+            volumes_total[i] = volumes_total[i]/volumes_multiple[i]
+        if i == 0:
+            pass
+        else:
+            volumes_total[i] += volumes_total[i-1]
+            if volumes_today[i] == 0 and today_latest_index == 0:
+                today_latest_index = i-1
+            else:
+                volumes_today[i] += volumes_today[i-1]
+
+    # 有可能今天结束了
+    if today_latest_index == 0:
+        today_latest_index = minutes_range_len-2
+
+    total_phase1 = volumes_total[0]
+    total_phase2_latest = volumes_total[today_latest_index] - total_phase1
+    total_phase2_all = volumes_total[minutes_range_len-2] - total_phase1
+    total_phase3 = volumes_total[minutes_range_len-1] - volumes_total[minutes_range_len-2]
+    print(total_phase1)
+    print(total_phase2_latest)
+    print(total_phase2_all)
+    print(total_phase3)
+    print(volumes_total[minutes_range_len-1])
+
+    today_phase1 = volumes_today[0]
+    today_phase2_latest = volumes_today[today_latest_index] - today_phase1
+    # 按比例估算
+    today_phase2_all = 1.0*today_phase2_latest/(total_phase2_latest*1.0/total_phase2_all)
+    # 直接取之前的,不按比例
+    today_phase3 = total_phase3
+    print(today_phase1)
+    print(today_phase2_latest)
+    print(today_phase2_all)
+    print(today_phase3)
+    print(volumes_today[minutes_range_len-1])
+
+
+    df = pd.DataFrame(minutes_range, columns=['timestamp'])
+    df['volumes_total'] = volumes_total
+    df['volumes_today'] = volumes_today
+
+
+    # Set the 'timestamp' column as the index
+    df.set_index('timestamp', inplace=True)
+
+    #print("Original DataFrame:")
+    #print(df)
+
+    # Define the time ranges to remove
+    drop_ranges = [
+        (pd.Timestamp('11:31:00'), pd.Timestamp('12:59:00')),
+        (pd.Timestamp('09:00:00'), pd.Timestamp('09:14:00'))
+    ]
+    # Remove the specified time ranges
+    for start_time, end_time in drop_ranges:
+        print(start_time)
+        df = df.drop(df[start_time:end_time].index)
+
+    print("\nDataFrame after removing specified time range:")
+    #print(df)
+
+    # Plotting the data
+    plt.figure(figsize=(18, 8))
+
+    """
+    # Set the Chinese font
+    plt.rcParams['font.sans-serif'] = ['AR PL UMing CN']  # Specify the font family
+    plt.rcParams['axes.unicode_minus'] = False  # Ensure minus sign is displayed correctly
+    """
+
+    ### Plot
+    #plt.plot(use_index=True, y='volumes_total', marker='o', linestyle='-')
+    #plt.plot(use_index=True, y='volumes_today', marker='o', linestyle='-')
+    #df.plot(y='volumes_total', use_index=True, marker='o', linestyle='-')
+    #df.plot(y='volumes_today', use_index=True, marker='o', linestyle='-')
+
+    plt.plot(df.index, df['volumes_total'], marker='o', linestyle='-', label="n days' average volume (5 minutes)")
+    plt.plot(df.index, df['volumes_today'], marker='o', linestyle='-', label="today volume (5 minutes)")
+
+    """
+    plt.plot(df["timestamp"], df['volumes_total'], marker='o', linestyle='-', label="n days' average")
+    plt.plot(df["timestamp"], df['volumes_today'], marker='o', linestyle='-', label="today's value")
+    """
+
+    # Customize the x-axis ticks
+    plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
+    plt.gca().xaxis.set_major_locator(mdates.MinuteLocator(interval=5))  # Adjust the interval as needed
+
+
+    # Custom ticks and labels
+    all_ticks = minutes_range
+    tick_labels = [tick.strftime('%H:%M') for tick in minutes_range]
+
+    # Set custom ticks and labels
+    plt.xticks(ticks=all_ticks, labels=tick_labels, rotation=45)
+
+
+
+    ## Create a plot
+    ##plt.plot(x, y)
+    ##plt.plot(x, y2)
+    #plt.plot(minutes, transaction_amounts, marker='o', linestyle='-')
+    ## Customize the x-axis ticks
+    #plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
+    #plt.gca().xaxis.set_major_locator(mdates.MinuteLocator(interval=10))
+    #plt.gcf().autofmt_xdate()  # Rotate and align the x-axis labels
+
+
+    # Customize the plot to display axes
+    plt.grid(True)  # Show grid lines
+    plt.xlabel('timestamp')
+    plt.ylabel('volume')
+    title = code
+    title = title + "    Today's volume may be: " + str(today_phase1+today_phase2_all+today_phase3)
+    plt.title(title)
+
+    plt.legend()
+
+    plt.gcf().autofmt_xdate()  # Rotate and format x-axis labels for better readability
+
+    # Show the plot
+    plt.tight_layout()
+    plt.show(block=True)
 
 def generatePlot(code, ndays):
     time9 = datetime.strptime('09:35:00', '%H:%M:%S')
