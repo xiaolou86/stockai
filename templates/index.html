@@ -1,31 +1,56 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Plot Axes Demo</title>
+    <title>My Homepage</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f5;
+            color: #333;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        .page-links {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 20px;
+        }
+        .page-links a {
+            display: block;
+            width: 100%;
+            max-width: 500px;
+            padding: 10px;
+            margin: 10px 0;
+            text-decoration: none;
+            color: #fff;
+            background-color: #0073e6;
+            text-align: center;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+        }
+        .page-links a:hover {
+            background-color: #005bb5;
+        }
+    </style>
 </head>
 <body>
-    <h1>Enter a Value to Generate Plot</h1>
-    <form method="post">
-        <label for="code">Enter stock code (sh000001, sh600000, sz000001):</label><br>
-        <input type="text" id="code" name="code"><br><br>
 
-        <label for="days">Enter n days (n<=8):</label><br>
-        <input type="text" id="days" name="days"><br><br>
+    <h1>Stock Homepage</h1>
 
-        <button type="submit">Submit</button>
-    </form>
+    <div class="page-links">
+        <!-- Replace the href values with the actual paths to your pages -->
+        <a href="high">1分钟的最高价的概率统计</a>
+        <a href="high5">5分钟的最高价最低价的概率统计</a>
+        <a href="volume">交易量统计</a>
+        <a href="volume_old">交易量统计(老)</a>
+        <!-- Add more links as needed -->
+    </div>
 
-    {% if axes %}
-        <h2>Axes: 5分钟交易额（元） </h2>
-        <p>{{ axes }}</p>
-        <img src="{{ url_for('plot_png', days=days, code=code) }}" alt="Generated Plot">
-    {% endif %}
-
-    {% if error %}
-        <p style="color: red;">{{ error }}</p>
-    {% endif %}
 </body>
 </html>
 

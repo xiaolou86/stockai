@@ -206,8 +206,12 @@ def plot_png2():
 
     return send_file(img, mimetype='image/png')
 
-@app.route('/', methods=['GET', 'POST'])
+@app.route('/', methods=['GET'])
 def index():
+    return render_template('index.html')
+
+@app.route('/volume_old', methods=['GET', 'POST'])
+def volume_old():
     if request.method == 'POST':
         try:
             # Get user input
@@ -235,11 +239,11 @@ def index():
             x_lim = ax.get_xlim()
             y_lim = ax.get_ylim()
 
-            return render_template('index.html', axes=f"1", days=days, code=code)
+            return render_template('volume_old.html', axes=f"1", days=days, code=code)
         except ValueError:
-            return render_template('index.html', error="Please enter a valid number.")
+            return render_template('volume_old.html', error="Please enter a valid number.")
 
-    return render_template('index.html')
+    return render_template('volume_old.html')
 
 @app.route('/volume', methods=['GET', 'POST'])
 def volume():
