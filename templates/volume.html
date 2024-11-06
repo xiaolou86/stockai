@@ -30,11 +30,34 @@
         <p style="color: red;">{{ error }}</p>
     {% endif %}
 
+
     <script>
-        // Function to submit the form every 5 minutes (300,000 ms)
-        setInterval(function() {
-            document.getElementById("info").submit();
-        }, 300000); // 300,000 ms = 5 minutes
+        let submitInterval;
+
+        function setFormSubmissionInterval() {
+            // Clear any existing interval
+            if (submitInterval) {
+                clearInterval(submitInterval);
+            }
+
+            // Get interval value in seconds from the input field and convert to milliseconds
+            const intervalInput = document.getElementById("period").value;
+            const interval = parseInt(intervalInput, 5) * 60 * 1000; // Convert seconds to milliseconds
+
+            // Set a new interval if the input is a valid positive number
+            if (interval > 0) {
+                submitInterval = setInterval(function() {
+                    document.getElementById("info").submit();
+                }, interval);
+            }
+        }
+
+        // Set the initial interval on page load
+        setFormSubmissionInterval();
+
+        // Update the interval whenever the input value changes
+        document.getElementById("period").addEventListener("change", setFormSubmissionInterval);
+
     </script>
 
 </body>
