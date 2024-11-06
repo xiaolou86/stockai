@@ -568,6 +568,190 @@ def stock_zh_a_minute_my(
         temp_df.reset_index(drop=True, inplace=True)
         return temp_df
 
+def generateVolume1MinPlot(code, ndays, period):
+    time9 = datetime.strptime('09:31:00', '%H:%M:%S')
+    print(time9)
+
+    minutes_range1 = pd.date_range(start='09:31:00', end='11:30:00', freq='1min')
+    minutes_range2 = pd.date_range(start='13:01:00', end='15:00:00', freq='1min')
+    minutes_range = minutes_range1.append(minutes_range2)
+
+    volumes_total = [float(0) for i in range(len(minutes_range))]
+    volumes_multiple = [int(0) for i in range(len(minutes_range))]
+    volumes_today = [float(0) for i in range(len(minutes_range))]
+
+    today = datetime.today()
+    today_date = today.strftime('%Y-%m-%d')
+
+    #stock_zh_a_minute_df = ak.stock_zh_a_minute(symbol='sh000001', period='1', adjust="")
+    #print(stock_zh_a_minute_df)
+    #minutes = stock_zh_a_minute_df['day']
+    #volumes = stock_zh_a_minute_df['volume']
+
+    """
+    stock_zh_a_minute_df = bond_zh_hs_cov_min(
+        symbol=code,
+        period="5",
+        adjust="",
+        start_date="1979-09-01 09:32:00",
+        end_date="2222-01-01 09:32:00",
+        ndays=ndays,
+    )
+    minutes = stock_zh_a_minute_df['时间']
+    volumes = stock_zh_a_minute_df['成交额']
+    """
+    #stock_zh_a_minute_df = ak.stock_zh_a_minute(symbol=code, period="5")
+    stock_zh_a_minute_df = stock_zh_a_minute_my(symbol=code, period="1", days=ndays)
+    print(stock_zh_a_minute_df)
+    minutes = stock_zh_a_minute_df['day']
+    volumes = stock_zh_a_minute_df['volume']
+
+    data_len = len(stock_zh_a_minute_df)
+    print(data_len)
+    for i in range(data_len):
+        time_cur = datetime.strptime(minutes[i].split(" ")[1], '%H:%M:%S')
+        offset_in_minutes = time_cur-time9
+        index = offset_in_minutes.total_seconds() / 60 / 1
+        index = int(index)
+        # if it's in the afternoon, need to minus "1 hour and a half"
+        if index >= 60*2:
+            index = index - 60 - 30
+        if minutes[i].split(" ")[0] == today_date:
+            # today's data
+            volumes_today[index] = float(volumes[i])
+        else:
+            # history's data
+            volumes_total[index] += float(volumes[i])
+            volumes_multiple[index] += 1
+
+    # calc the average
+    minutes_range_len = len(minutes_range)
+    today_latest_index = 0
+    for i in range(minutes_range_len):
+        if volumes_multiple[i] >= 1:
+            volumes_total[i] = volumes_total[i]/volumes_multiple[i]
+        if i == 0:
+            pass
+        else:
+            volumes_total[i] += volumes_total[i-1]
+            if volumes_today[i] == 0 and today_latest_index == 0:
+                today_latest_index = i-1
+            else:
+                volumes_today[i] += volumes_today[i-1]
+
+    # 有可能今天结束了
+    if today_latest_index == 0:
+        today_latest_index = minutes_range_len-2
+
+    total_phase1 = volumes_total[0]
+    total_phase2_latest = volumes_total[today_latest_index] - total_phase1
+    total_phase2_all = volumes_total[minutes_range_len-2] - total_phase1
+    total_phase3 = volumes_total[minutes_range_len-1] - volumes_total[minutes_range_len-2]
+    print(total_phase1)
+    print(total_phase2_latest)
+    print(total_phase2_all)
+    print(total_phase3)
+    print(volumes_total[minutes_range_len-1])
+
+    today_phase1 = volumes_today[0]
+    today_phase2_latest = volumes_today[today_latest_index] - today_phase1
+    # 按比例估算
+    today_phase2_all = 1.0*today_phase2_latest/(total_phase2_latest*1.0/total_phase2_all)
+    # 直接取之前的,不按比例
+    today_phase3 = total_phase3
+    print(today_phase1)
+    print(today_phase2_latest)
+    print(today_phase2_all)
+    print(today_phase3)
+    print(volumes_today[minutes_range_len-1])
+
+
+    df = pd.DataFrame(minutes_range, columns=['timestamp'])
+    df['volumes_total'] = volumes_total
+    df['volumes_today'] = volumes_today
+
+
+    # Set the 'timestamp' column as the index
+    df.set_index('timestamp', inplace=True)
+
+    #print("Original DataFrame:")
+    #print(df)
+
+    # Define the time ranges to remove
+    drop_ranges = [
+        (pd.Timestamp('11:31:00'), pd.Timestamp('12:59:00')),
+        (pd.Timestamp('09:00:00'), pd.Timestamp('09:14:00'))
+    ]
+    # Remove the specified time ranges
+    for start_time, end_time in drop_ranges:
+        print(start_time)
+        df = df.drop(df[start_time:end_time].index)
+
+    print("\nDataFrame after removing specified time range:")
+    #print(df)
+
+    # Plotting the data
+    plt.figure(figsize=(18, 8))
+
+    """
+    # Set the Chinese font
+    plt.rcParams['font.sans-serif'] = ['AR PL UMing CN']  # Specify the font family
+    plt.rcParams['axes.unicode_minus'] = False  # Ensure minus sign is displayed correctly
+    """
+
+    ### Plot
+    #plt.plot(use_index=True, y='volumes_total', marker='o', linestyle='-')
+    #plt.plot(use_index=True, y='volumes_today', marker='o', linestyle='-')
+    #df.plot(y='volumes_total', use_index=True, marker='o', linestyle='-')
+    #df.plot(y='volumes_today', use_index=True, marker='o', linestyle='-')
+
+    plt.plot(df.index, df['volumes_total'], marker='o', linestyle='-', label="n days' average volume (1 minutes)")
+    plt.plot(df.index, df['volumes_today'], marker='o', linestyle='-', label="today volume (1 minutes)")
+
+    """
+    plt.plot(df["timestamp"], df['volumes_total'], marker='o', linestyle='-', label="n days' average")
+    plt.plot(df["timestamp"], df['volumes_today'], marker='o', linestyle='-', label="today's value")
+    """
+
+    # Customize the x-axis ticks
+    plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
+    plt.gca().xaxis.set_major_locator(mdates.MinuteLocator(interval=1))  # Adjust the interval as needed
+
+
+    # Custom ticks and labels
+    all_ticks = minutes_range
+    tick_labels = [tick.strftime('%H:%M') for tick in minutes_range]
+
+    # Set custom ticks and labels
+    plt.xticks(ticks=all_ticks, labels=tick_labels, rotation=45)
+
+
+
+    ## Create a plot
+    ##plt.plot(x, y)
+    ##plt.plot(x, y2)
+    #plt.plot(minutes, transaction_amounts, marker='o', linestyle='-')
+    ## Customize the x-axis ticks
+    #plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
+    #plt.gca().xaxis.set_major_locator(mdates.MinuteLocator(interval=10))
+    #plt.gcf().autofmt_xdate()  # Rotate and align the x-axis labels
+
+
+    # Customize the plot to display axes
+    plt.grid(True)  # Show grid lines
+    plt.xlabel('timestamp')
+    plt.ylabel('volume')
+    title = code
+    title = title + "    Today's volume may be: " + str(today_phase1+today_phase2_all+today_phase3)
+    plt.title(title)
+
+    plt.legend()
+
+    plt.gcf().autofmt_xdate()  # Rotate and format x-axis labels for better readability
+
+    # Show the plot
+    plt.tight_layout()
+    plt.show(block=True)
 
 def generateVolume5MinPlot(code, ndays, period):
     time9 = datetime.strptime('09:35:00', '%H:%M:%S')
