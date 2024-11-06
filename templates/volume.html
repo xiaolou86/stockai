@@ -7,7 +7,7 @@
 </head>
 <body>
     <h1>Enter a Value to Generate Plot</h1>
-    <form method="post">
+    <form id="info" method="post">
         <label for="code">Enter stock code (sh000001, sh600000, sz000001):</label><br>
 	<input type="text" id="code" name="code" value="{{ request.form['code'] if request.method == 'POST' else 'sh000001'}}"><br><br>
 
@@ -29,6 +29,14 @@
     {% if error %}
         <p style="color: red;">{{ error }}</p>
     {% endif %}
+
+    <script>
+        // Function to submit the form every 5 minutes (300,000 ms)
+        setInterval(function() {
+            document.getElementById("info").submit();
+        }, 300000); // 300,000 ms = 5 minutes
+    </script>
+
 </body>
 </html>
 
