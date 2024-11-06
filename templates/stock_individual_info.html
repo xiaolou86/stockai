@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plot Axes Demo</title>
+</head>
+<body>
+
+    {% include "header.html" %}
+
+    <h1>个股信息</h1>
+    <form method="post">
+        <label for="code">Enter stock code (000001, 600000):</label><br>
+	<input type="text" id="code" name="code" value="{{ request.form['code'] if request.method == 'POST' else '000001'}}"><br><br>
+
+        <button type="submit">确定</button>
+    </form>
+
+    <h1></h1>
+    {% if individual_info %}
+    {{ individual_info | safe }}
+    {% endif %}
+
+</body>
+</html>
+

@@ -1082,6 +1082,21 @@ def generatePlot(code, ndays):
     plt.tight_layout()
     plt.show(block=True)
 
+
+@app.route('/stock_individual_info', methods=['GET', 'POST'])
+def stock_individual_info():
+    if request.method == 'POST':
+        try:
+            code = request.form['code']
+            stock_individual_info_em_df = ak.stock_individual_info_em(symbol=code)
+            html_table = stock_individual_info_em_df.to_html(index=False)
+
+            return render_template('stock_individual_info.html', individual_info=html_table)
+        except ValueError:
+            return render_template('stock_individual_info.html')
+    return render_template('stock_individual_info.html')
+
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=50080)
 
