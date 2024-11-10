@@ -281,6 +281,56 @@ def volume():
 
     return render_template('volume.html')
 
+@app.route('/volume1min', methods=['GET', 'POST'])
+def volume1min():
+    if request.method == 'POST':
+        try:
+            # Get user input
+            days = request.form['days']
+            code = request.form['code']
+
+            # Generate the plot
+            fig, ax = plt.subplots()
+            x = [1, 2, 3, 4, 5]
+            y = [days * i for i in x]
+            ax.plot(x, y)
+            ax.set_xlabel('X-axis Label')
+            ax.set_ylabel('Y-axis Label')
+            ax.set_title('Plot Title')
+            ax.grid(True)
+
+            # Save the plot to a BytesIO object
+            img = io.BytesIO()
+            plt.savefig(img, format='png')
+            img.seek(0)
+            plt.close()
+
+            # Extract axes limits
+            x_lim = ax.get_xlim()
+            y_lim = ax.get_ylim()
+
+            return render_template('volume1min.html', axes=f"1", days=days, code=code)
+        except ValueError:
+            return render_template('volume1min.html', error="Please enter a valid number.")
+
+    return render_template('volume1min.html')
+
+@app.route('/volume1min.png')
+def volume1min_png():
+    days = request.args.get('days', '1')
+    code = request.args.get('code', 'sh000001')
+    period = '1'
+
+    # Generate the plot again to send the image
+    if period == '1':
+        generateVolume1MinPlot(code, days, period, True)
+
+    img = io.BytesIO()
+    plt.savefig(img, format='png')
+    img.seek(0)
+    plt.close()
+
+    return send_file(img, mimetype='image/png')
 
 @app.route('/volume.png')
 def volume_png():
@@ -572,7 +622,7 @@ def stock_zh_a_minute_my(
         temp_df.reset_index(drop=True, inplace=True)
         return temp_df
 
-def generateVolume1MinPlot(code, ndays, period):
+def generateVolume1MinPlot(code, ndays, period, isFillRemaining=False):
     time9 = datetime.strptime('09:31:00', '%H:%M:%S')
     print(time9)
 
@@ -643,8 +693,8 @@ def generateVolume1MinPlot(code, ndays, period):
             else:
                 volumes_today[i] += volumes_today[i-1]
 
-    # 有可能今天结束了
-    if today_latest_index == 0:
+    # 今天结束了
+    if today_latest_index == 0 and volumes_today[0] != 0:
         today_latest_index = minutes_range_len-2
 
     total_phase1 = volumes_total[0]
@@ -659,7 +709,21 @@ def generateVolume1MinPlot(code, ndays, period):
 
     today_phase1 = volumes_today[0]
     today_phase2_latest = volumes_today[today_latest_index] - today_phase1
-    # 按比例估算
+
+    if today_latest_index < 1:
+        # time is <= 9:30 or >= 15:00
+        pass
+    else:
+        # the other time
+        if isFillRemaining:
+            # 按比例估算
+            rate = today_phase2_latest*1.0/total_phase2_latest
+            for i in range(today_latest_index+1, minutes_range_len-1):
+                volumes_today[i] = rate*(volumes_total[i]-total_phase1) + today_phase1
+
+            # phase3: assumed to equal to total_phase3
+            volumes_today[minutes_range_len-1] = volumes_today[minutes_range_len-2] + total_phase3
+
     today_phase2_all = 1.0*today_phase2_latest/(total_phase2_latest*1.0/total_phase2_all)
     # 直接取之前的,不按比例
     today_phase3 = total_phase3
