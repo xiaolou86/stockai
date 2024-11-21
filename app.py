@@ -789,6 +789,14 @@ def generateVolume1MinPlot(code, ndays, period, isFillRemaining=False, isSum=Tru
             volumes_total[i] -= volumes_total[i-1]
             volumes_today[i] -= volumes_today[i-1]
 
+        # 去掉头尾
+        volumes_today[0] = 0
+        volumes_today[1] = 0
+        volumes_today[2] = 0
+        volumes_today[minutes_range_len-1] = 0
+        volumes_today[minutes_range_len-2] = 0
+        volumes_today[minutes_range_len-3] = 0
+        volumes_today[minutes_range_len-4] = 0
 
     df = pd.DataFrame(minutes_range, columns=['timestamp'])
     df['volumes_total'] = volumes_total
@@ -829,7 +837,7 @@ def generateVolume1MinPlot(code, ndays, period, isFillRemaining=False, isSum=Tru
     #df.plot(y='volumes_total', use_index=True, marker='o', linestyle='-')
     #df.plot(y='volumes_today', use_index=True, marker='o', linestyle='-')
 
-    plt.plot(df.index, df['volumes_total'], marker='.', markersize=2, linestyle='-', label="n days' average volume (1 minutes)")
+    #plt.plot(df.index, df['volumes_total'], marker='.', markersize=2, linestyle='-', label="n days' average volume (1 minutes)")
     plt.plot(df.index, df['volumes_today'], marker='.', markersize=2, linestyle='-', label="today volume (1 minutes)")
 
     """
@@ -839,7 +847,7 @@ def generateVolume1MinPlot(code, ndays, period, isFillRemaining=False, isSum=Tru
 
     # Customize the x-axis ticks
     plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
-    plt.gca().xaxis.set_major_locator(mdates.MinuteLocator(interval=10))  # Adjust the interval as needed
+    plt.gca().xaxis.set_major_locator(mdates.MinuteLocator(interval=1))  # Adjust the interval as needed
 
 
     # Custom ticks and labels
@@ -847,7 +855,7 @@ def generateVolume1MinPlot(code, ndays, period, isFillRemaining=False, isSum=Tru
     tick_labels = [tick.strftime('%H:%M') for tick in minutes_range]
 
     # Set custom ticks and labels
-    #plt.xticks(ticks=all_ticks, labels=tick_labels, rotation=45)
+    plt.xticks(ticks=all_ticks, labels=tick_labels, rotation=45)
 
 
 
@@ -873,6 +881,23 @@ def generateVolume1MinPlot(code, ndays, period, isFillRemaining=False, isSum=Tru
         latest_close_price = stock_zh_a_minute_df['close'][data_len-1]
         title = title + "    latest_time: " + str(latest_time)
         title = title + "    latest_price: " + str(latest_close_price)
+
+        """
+        time_cur = datetime.strptime(minutes[i].split(" ")[1], '%H:%M:%S')
+        offset_in_minutes = time_cur-time9
+        index = offset_in_minutes.total_seconds() / 60 / 1
+        index = int(index)
+        # if it's in the afternoon, need to minus "1 hour and a half"
+        if index >= 60*2:
+            index = index - 60 - 30
+        """
+
+        title = title + "\n predict the following minutes' volume"
+        for i in range(today_latest_index, today_latest_index+10):
+            if i >= minutes_range_len-1:
+                break
+            title = title + "\n " + str(volumes_today[i])
+
     plt.title(title)
 
     plt.legend()
