@@ -839,7 +839,7 @@ def generateVolume1MinPlot(code, ndays, period, isFillRemaining=False, isSum=Tru
 
     # Customize the x-axis ticks
     plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
-    plt.gca().xaxis.set_major_locator(mdates.MinuteLocator(interval=1))  # Adjust the interval as needed
+    plt.gca().xaxis.set_major_locator(mdates.MinuteLocator(interval=10))  # Adjust the interval as needed
 
 
     # Custom ticks and labels
@@ -847,7 +847,7 @@ def generateVolume1MinPlot(code, ndays, period, isFillRemaining=False, isSum=Tru
     tick_labels = [tick.strftime('%H:%M') for tick in minutes_range]
 
     # Set custom ticks and labels
-    plt.xticks(ticks=all_ticks, labels=tick_labels, rotation=45)
+    #plt.xticks(ticks=all_ticks, labels=tick_labels, rotation=45)
 
 
 
