@@ -332,6 +332,57 @@ def volume1min_png():
 
     return send_file(img, mimetype='image/png')
 
+@app.route('/volume1min-not-sum', methods=['GET', 'POST'])
+def volume1min_not_sum():
+    if request.method == 'POST':
+        try:
+            # Get user input
+            days = request.form['days']
+            code = request.form['code']
+
+            # Generate the plot
+            fig, ax = plt.subplots()
+            x = [1, 2, 3, 4, 5]
+            y = [days * i for i in x]
+            ax.plot(x, y)
+            ax.set_xlabel('X-axis Label')
+            ax.set_ylabel('Y-axis Label')
+            ax.set_title('Plot Title')
+            ax.grid(True)
+
+            # Save the plot to a BytesIO object
+            img = io.BytesIO()
+            plt.savefig(img, format='png')
+            img.seek(0)
+            plt.close()
+
+            # Extract axes limits
+            x_lim = ax.get_xlim()
+            y_lim = ax.get_ylim()
+
+            return render_template('volume1min-not-sum.html', axes=f"1", days=days, code=code)
+        except ValueError:
+            return render_template('volume1min-not-sum.html', error="Please enter a valid number.")
+
+    return render_template('volume1min-not-sum.html')
+
+@app.route('/volume1min_not_sum_png')
+def volume1min_not_sum_png():
+    days = request.args.get('days', '1')
+    code = request.args.get('code', 'sh000001')
+    period = '1'
+
+    # Generate the plot again to send the image
+    if period == '1':
+        generateVolume1MinPlot(code, days, period, True, False)
+
+    img = io.BytesIO()
+    plt.savefig(img, format='png')
+    img.seek(0)
+    plt.close()
+
+    return send_file(img, mimetype='image/png')
+
 @app.route('/volume.png')
 def volume_png():
     days = request.args.get('days', '1')
@@ -622,7 +673,7 @@ def stock_zh_a_minute_my(
         temp_df.reset_index(drop=True, inplace=True)
         return temp_df
 
-def generateVolume1MinPlot(code, ndays, period, isFillRemaining=False):
+def generateVolume1MinPlot(code, ndays, period, isFillRemaining=False, isSum=True):
     time9 = datetime.strptime('09:31:00', '%H:%M:%S')
     print(time9)
 
@@ -733,6 +784,11 @@ def generateVolume1MinPlot(code, ndays, period, isFillRemaining=False):
     print(today_phase3)
     print(volumes_today[minutes_range_len-1])
 
+    if not isSum:
+        for i in range(minutes_range_len-1, 0, -1):
+            volumes_total[i] -= volumes_total[i-1]
+            volumes_today[i] -= volumes_today[i-1]
+
 
     df = pd.DataFrame(minutes_range, columns=['timestamp'])
     df['volumes_total'] = volumes_total
@@ -810,7 +866,13 @@ def generateVolume1MinPlot(code, ndays, period, isFillRemaining=False):
     plt.xlabel('timestamp')
     plt.ylabel('volume')
     title = code
-    title = title + "    Today's volume may be: " + str(today_phase1+today_phase2_all+today_phase3)
+    if isSum:
+        title = title + "    Today's volume may be: " + str(today_phase1+today_phase2_all+today_phase3)
+    else:
+        latest_time = stock_zh_a_minute_df['day'][data_len-1]
+        latest_close_price = stock_zh_a_minute_df['close'][data_len-1]
+        title = title + "    latest_time: " + str(latest_time)
+        title = title + "    latest_price: " + str(latest_close_price)
     plt.title(title)
 
     plt.legend()

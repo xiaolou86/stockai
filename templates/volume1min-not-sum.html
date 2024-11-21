@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plot Axes Demo</title>
+</head>
+<body>
+    {% include "header.html" %}
+
+    <h1>Enter a Value to Generate Plot</h1>
+    <form id="info" method="post">
+        <label for="code">Enter stock code (sh000001, sh600000, sz000001):</label><br>
+	<input type="text" id="code" name="code" value="{{ request.form['code'] if request.method == 'POST' else 'sh000001'}}"><br><br>
+
+        <label for="days">Enter n days (n<=40):</label><br>
+	<input type="text" id="days" name="days" value="{{ request.form['days'] if request.method == 'POST' else '1'}}"><br><br>
+
+        <label for="period" id="period" name="period" value=1>1 minute</label><br>
+
+        <button type="submit">Submit</button>
+    </form>
+
+    {% if axes %}
+        <h2>Axes: 1分钟交易量，非交易额（非累积） </h2>
+        <p>{{ axes }}</p>
+        <img src="{{ url_for('volume1min_not_sum_png', days=days, code=code) }}" alt="Generated Plot">
+    {% endif %}
+
+    {% if error %}
+        <p style="color: red;">{{ error }}</p>
+    {% endif %}
+
+
+    <script>
+        let submitInterval;
+
+        function setFormSubmissionInterval() {
+            // Clear any existing interval
+            if (submitInterval) {
+                clearInterval(submitInterval);
+            }
+
+            // Get interval value in seconds from the input field and convert to milliseconds
+            const intervalInput = document.getElementById("period").value;
+            const interval = parseInt(intervalInput, 5) * 60 * 1000; // Convert seconds to milliseconds
+
+            // Set a new interval if the input is a valid positive number
+            if (interval > 0) {
+                submitInterval = setInterval(function() {
+                    document.getElementById("info").submit();
+                }, interval);
+            }
+        }
+
+        // Set the initial interval on page load
+        setFormSubmissionInterval();
+
+        // Update the interval whenever the input value changes
+        document.getElementById("period").addEventListener("change", setFormSubmissionInterval);
+
+    </script>
+
+</body>
+</html>
+
