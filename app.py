@@ -829,8 +829,8 @@ def generateVolume1MinPlot(code, ndays, period, isFillRemaining=False, isSum=Tru
     #df.plot(y='volumes_total', use_index=True, marker='o', linestyle='-')
     #df.plot(y='volumes_today', use_index=True, marker='o', linestyle='-')
 
-    plt.plot(df.index, df['volumes_total'], marker='o', linestyle='-', label="n days' average volume (1 minutes)")
-    plt.plot(df.index, df['volumes_today'], marker='o', linestyle='-', label="today volume (1 minutes)")
+    plt.plot(df.index, df['volumes_total'], marker='.', markersize=2, linestyle='-', label="n days' average volume (1 minutes)")
+    plt.plot(df.index, df['volumes_today'], marker='.', markersize=2, linestyle='-', label="today volume (1 minutes)")
 
     """
     plt.plot(df["timestamp"], df['volumes_total'], marker='o', linestyle='-', label="n days' average")
