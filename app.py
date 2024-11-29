@@ -812,6 +812,14 @@ def generateVolume1MinPlot(code, ndays, period, isFillRemaining=False, isSum=Tru
     # 直接取之前的,不按比例
     print(today_phase2_all)
 
+    if not isSum:
+        # 去掉头尾，为了减少曲线的取值区间
+        volumes_today[0] = volumes_today[begin_one]
+        volumes_today[1] = volumes_today[begin_one]
+        volumes_today[2] = volumes_today[begin_one]
+        volumes_today[minutes_range_len-1] = volumes_today[last_one-1]
+        volumes_today[minutes_range_len-2] = volumes_today[last_one-1]
+
     """
     ####### ok to calc phase1 and phase3
     total_phase1 = volumes_total[0]
