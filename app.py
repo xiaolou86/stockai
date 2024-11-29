@@ -389,7 +389,7 @@ def get_image_json():
     time_str="00:00"
     total_str="0"
     if period == '1':
-        time_str, total_str = generateVolume1MinPlot(code, days, period, True, False)
+        time_volumes = generateVolume1MinPlot(code, days, period, True, False)
 
     img = io.BytesIO()
     plt.savefig(img, format='png')
@@ -398,15 +398,11 @@ def get_image_json():
 
     encoded_image = base64.b64encode(img.getvalue()).decode('utf-8')
 
-    # Key-value data to be sent
-    key_value_data = {
-        time_str: total_str
-    }
     
     # Combine the image and the data
     data = {
         "image": encoded_image,
-        "info": key_value_data
+        "info":time_volumes 
     }
     
     return jsonify(data)
@@ -763,12 +759,12 @@ def generateVolume1MinPlot(code, ndays, period, isFillRemaining=False, isSum=Tru
     today_latest_index = 0
 
     # 去掉头尾
-    begin_one = 3
+    begin_one = 1
     last_one = minutes_range_len-2
-    for i in range(begin_one, last_one+1):
+    for i in range(0, last_one+1):
         if volumes_multiple[i] >= 1:
             volumes_total[i] = volumes_total[i]/volumes_multiple[i]
-        if i == 0:
+        if i <= begin_one:
             pass
         else:
             volumes_total[i] += volumes_total[i-1]
@@ -781,18 +777,6 @@ def generateVolume1MinPlot(code, ndays, period, isFillRemaining=False, isSum=Tru
     if today_latest_index == 0 and volumes_today[0] != 0:
         today_latest_index = minutes_range_len-2
 
-    if not isSum:
-        # 去掉头尾
-        volumes_total[0] = 0
-        volumes_total[1] = 0
-        volumes_total[2] = 0
-        volumes_total[minutes_range_len-1] = 0
-
-        volumes_today[0] = 0
-        volumes_today[1] = 0
-        volumes_today[2] = 0
-        volumes_today[minutes_range_len-1] = 0
-
     ####### no need to calc phase1 and phase3
     total_phase2_latest = volumes_total[today_latest_index]
     total_phase2_all = volumes_total[last_one]
@@ -803,10 +787,9 @@ def generateVolume1MinPlot(code, ndays, period, isFillRemaining=False, isSum=Tru
         # time is <= 9:30 or >= 15:00
         pass
 
-    rate = 1.0*total_phase2_all/total_phase2_latest
     for i in range(begin_one, today_latest_index+1):
         #这个值保存的是当下时间点估计的交易总额
-        volumes_today[i] = 1.0*total_phase2_all/volumes_total[i]*volumes_today[i]
+        volumes_today[i] = 1.0*total_phase2_all/volumes_total[i]*volumes_today[i] + volumes_today[0] + volumes_total[minutes_range_len-1]
 
     today_phase2_all = volumes_today[today_latest_index]
     # 直接取之前的,不按比例
@@ -815,8 +798,6 @@ def generateVolume1MinPlot(code, ndays, period, isFillRemaining=False, isSum=Tru
     if not isSum:
         # 去掉头尾，为了减少曲线的取值区间
         volumes_today[0] = volumes_today[begin_one]
-        volumes_today[1] = volumes_today[begin_one]
-        volumes_today[2] = volumes_today[begin_one]
         volumes_today[minutes_range_len-1] = volumes_today[last_one-1]
         volumes_today[minutes_range_len-2] = volumes_today[last_one-1]
 
@@ -954,6 +935,27 @@ def generateVolume1MinPlot(code, ndays, period, isFillRemaining=False, isSum=Tru
     now = datetime.now()
     time_str = now.strftime('%H:%M') 
 
+    for i in range(0, minutes_range_len):
+        volumes_today[i] = round(volumes_today[i], 0)
+    time_volumes = {
+            "09:45": volumes_today[15],
+            "10:00": volumes_today[30],
+            "10:15": volumes_today[45],
+            "10:30": volumes_today[60],
+            "10:45": volumes_today[75],
+            "11:00": volumes_today[90],
+            "11:15": volumes_today[105],
+            "11:27": volumes_today[117],
+            "13:15": volumes_today[136],
+            "13:30": volumes_today[151],
+            "13:45": volumes_today[166],
+            "14:00": volumes_today[181],
+            "14:15": volumes_today[196],
+            "14:30": volumes_today[211],
+            "14:45": volumes_today[226],
+            "14:54": volumes_today[235],
+    }
+
 
     plt.title(title)
 
@@ -964,7 +966,7 @@ def generateVolume1MinPlot(code, ndays, period, isFillRemaining=False, isSum=Tru
     # Show the plot
     plt.tight_layout()
     plt.show(block=True)
-    return time_str, str(today_phase2_all)
+    return time_volumes
 
 def generateVolume5MinPlot(code, ndays, period):
     time9 = datetime.strptime('09:35:00', '%H:%M:%S')
