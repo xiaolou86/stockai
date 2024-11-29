@@ -761,7 +761,11 @@ def generateVolume1MinPlot(code, ndays, period, isFillRemaining=False, isSum=Tru
     # calc the average
     minutes_range_len = len(minutes_range)
     today_latest_index = 0
-    for i in range(minutes_range_len):
+
+    # 去掉头尾
+    begin_one = 3
+    last_one = minutes_range_len-2
+    for i in range(begin_one, last_one+1):
         if volumes_multiple[i] >= 1:
             volumes_total[i] = volumes_total[i]/volumes_multiple[i]
         if i == 0:
@@ -777,6 +781,39 @@ def generateVolume1MinPlot(code, ndays, period, isFillRemaining=False, isSum=Tru
     if today_latest_index == 0 and volumes_today[0] != 0:
         today_latest_index = minutes_range_len-2
 
+    if not isSum:
+        # 去掉头尾
+        volumes_total[0] = 0
+        volumes_total[1] = 0
+        volumes_total[2] = 0
+        volumes_total[minutes_range_len-1] = 0
+
+        volumes_today[0] = 0
+        volumes_today[1] = 0
+        volumes_today[2] = 0
+        volumes_today[minutes_range_len-1] = 0
+
+    ####### no need to calc phase1 and phase3
+    total_phase2_latest = volumes_total[today_latest_index]
+    total_phase2_all = volumes_total[last_one]
+    print(total_phase2_latest)
+    print(total_phase2_all)
+
+    if today_latest_index < 1:
+        # time is <= 9:30 or >= 15:00
+        pass
+
+    rate = 1.0*total_phase2_all/total_phase2_latest
+    for i in range(begin_one, today_latest_index+1):
+        #这个值保存的是当下时间点估计的交易总额
+        volumes_today[i] = 1.0*total_phase2_all/volumes_total[i]*volumes_today[i]
+
+    today_phase2_all = volumes_today[today_latest_index]
+    # 直接取之前的,不按比例
+    print(today_phase2_all)
+
+    """
+    ####### ok to calc phase1 and phase3
     total_phase1 = volumes_total[0]
     total_phase2_latest = volumes_total[today_latest_index] - total_phase1
     total_phase2_all = volumes_total[minutes_range_len-2] - total_phase1
@@ -804,7 +841,7 @@ def generateVolume1MinPlot(code, ndays, period, isFillRemaining=False, isSum=Tru
             # phase3: assumed to equal to total_phase3
             volumes_today[minutes_range_len-1] = volumes_today[minutes_range_len-2] + total_phase3
 
-    today_phase2_all = 1.0*today_phase2_latest/(total_phase2_latest*1.0/total_phase2_all)
+    today_phase2_all = 1.0*today_phase2_latest/total_phase2_latest*total_phase2_all
     # 直接取之前的,不按比例
     today_phase3 = total_phase3
     print(today_phase1)
@@ -826,6 +863,7 @@ def generateVolume1MinPlot(code, ndays, period, isFillRemaining=False, isSum=Tru
         volumes_today[minutes_range_len-2] = 0
         volumes_today[minutes_range_len-3] = 0
         volumes_today[minutes_range_len-4] = 0
+    """
 
     df = pd.DataFrame(minutes_range, columns=['timestamp'])
     df['volumes_total'] = volumes_total
@@ -904,7 +942,7 @@ def generateVolume1MinPlot(code, ndays, period, isFillRemaining=False, isSum=Tru
     plt.ylabel('volume')
     title = code
     if isSum:
-        title = title + "    Today's volume may be: " + str(today_phase1+today_phase2_all+today_phase3)
+        title = title + "    Today's volume may be: " + str(today_phase2_all)
     now = datetime.now()
     time_str = now.strftime('%H:%M') 
 
@@ -918,7 +956,7 @@ def generateVolume1MinPlot(code, ndays, period, isFillRemaining=False, isSum=Tru
     # Show the plot
     plt.tight_layout()
     plt.show(block=True)
-    return time_str, str(today_phase1+today_phase2_all+today_phase3)
+    return time_str, str(today_phase2_all)
 
 def generateVolume5MinPlot(code, ndays, period):
     time9 = datetime.strptime('09:35:00', '%H:%M:%S')
