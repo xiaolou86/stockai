@@ -18,13 +18,26 @@
 
         <label for="period" id="period" name="period" value=1>1 minute</label><br>
 
-        <button type="submit">Submit</button>
+        <button type="submit", id="fetch-button">Submit</button>
     </form>
 
     {% if axes %}
         <h2>Axes: 1分钟交易量，非交易额（非累积） </h2>
         <p>{{ axes }}</p>
-        <img src="{{ url_for('volume1min_not_sum_png', days=days, code=code) }}" alt="Generated Plot">
+    	<img id="dynamic-image" alt="Dynamic Image" style="max-width: 300px;">
+    	
+    	<!-- Table to display key-value data -->
+    	<table border="1" id="info-table">
+    	    <thead>
+    	        <tr>
+    	            <th>Key</th>
+    	            <th>Value</th>
+    	        </tr>
+    	    </thead>
+    	    <tbody>
+    	        <!-- Rows will be added dynamically -->
+    	    </tbody>
+    	</table>
     {% endif %}
 
     {% if error %}
@@ -33,6 +46,57 @@
 
 
     <script>
+
+       // Add event listener for the button click
+        document.getElementById('fetch-button').addEventListener('click', () => {
+            // Get values from the form inputs
+            const days = document.getElementById('days').value;
+            const code = document.getElementById('code').value;
+
+            // Validate inputs (optional)
+            if (!days || !code) {
+                alert('Please fill in both parameters.');
+                return;
+            }
+
+            // Construct the API URL with query parameters
+            const apiUrl = `http://159.138.154.94:50080/volume1min_not_sum_png?days=${encodeURIComponent(days)}&code=${encodeURIComponent(code)}`;
+
+            // Fetch the data from the backend
+            fetch(apiUrl)
+                .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+                .then(data => {
+                    // Display the image
+                    document.getElementById('dynamic-image').src = 'data:image/jpeg;base64,' + data.image;
+                    
+                    // Populate the table
+                    const tableBody = document.getElementById('info-table').querySelector('tbody');
+                    tableBody.innerHTML = ''; // Clear existing rows
+
+                    for (const [key, value] of Object.entries(data.info)) {
+                        const row = document.createElement('tr');
+                        const keyCell = document.createElement('td');
+                        const valueCell = document.createElement('td');
+
+                        keyCell.textContent = key;
+                        valueCell.textContent = value;
+
+                        row.appendChild(keyCell);
+                        row.appendChild(valueCell);
+                        tableBody.appendChild(row);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching data:', error);
+                    alert('Failed to fetch data.');
+                });
+        });
+
         let submitInterval;
 
         function setFormSubmissionInterval() {

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from flask import Flask, request, render_template, send_file
+from flask import Flask, request, render_template, send_file, jsonify
 import matplotlib.pyplot as plt
 import io
 import akshare as ak
@@ -8,8 +8,13 @@ from datetime import datetime, timedelta
 import pandas as pd
 import requests
 import json
+import base64
+
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)  
+
 
 @app.route('/high5', methods=['GET', 'POST'])
 def high5low5():
@@ -366,22 +371,46 @@ def volume1min_not_sum():
 
     return render_template('volume1min-not-sum.html')
 
-@app.route('/volume1min_not_sum_png')
-def volume1min_not_sum_png():
+#@app.route('/volume1min_not_sum_png', methods=['GET'])
+#def volume1min_not_sum_png():
+@app.route('/2')
+def home():
+        return render_template('2.html')
+
+@app.route('/get_image_json', methods=['GET'])
+def get_image_json():
     days = request.args.get('days', '1')
     code = request.args.get('code', 'sh000001')
     period = '1'
+    print(days)
+    print(code)
 
     # Generate the plot again to send the image
+    time_str="00:00"
+    total_str="0"
     if period == '1':
-        generateVolume1MinPlot(code, days, period, True, False)
+        time_str, total_str = generateVolume1MinPlot(code, days, period, True, False)
 
     img = io.BytesIO()
     plt.savefig(img, format='png')
     img.seek(0)
     plt.close()
 
-    return send_file(img, mimetype='image/png')
+    encoded_image = base64.b64encode(img.getvalue()).decode('utf-8')
+
+    # Key-value data to be sent
+    key_value_data = {
+        time_str: total_str
+    }
+    
+    # Combine the image and the data
+    data = {
+        "image": encoded_image,
+        "info": key_value_data
+    }
+    
+    return jsonify(data)
+
 
 @app.route('/volume.png')
 def volume_png():
@@ -876,27 +905,9 @@ def generateVolume1MinPlot(code, ndays, period, isFillRemaining=False, isSum=Tru
     title = code
     if isSum:
         title = title + "    Today's volume may be: " + str(today_phase1+today_phase2_all+today_phase3)
-    else:
-        latest_time = stock_zh_a_minute_df['day'][data_len-1]
-        latest_close_price = stock_zh_a_minute_df['close'][data_len-1]
-        title = title + "    latest_time: " + str(latest_time)
-        title = title + "    latest_price: " + str(latest_close_price)
+    now = datetime.now()
+    time_str = now.strftime('%H:%M') 
 
-        """
-        time_cur = datetime.strptime(minutes[i].split(" ")[1], '%H:%M:%S')
-        offset_in_minutes = time_cur-time9
-        index = offset_in_minutes.total_seconds() / 60 / 1
-        index = int(index)
-        # if it's in the afternoon, need to minus "1 hour and a half"
-        if index >= 60*2:
-            index = index - 60 - 30
-        """
-
-        title = title + "\n predict the following minutes' volume"
-        for i in range(today_latest_index, today_latest_index+10):
-            if i >= minutes_range_len-1:
-                break
-            title = title + "\n " + str(volumes_today[i])
 
     plt.title(title)
 
@@ -907,6 +918,7 @@ def generateVolume1MinPlot(code, ndays, period, isFillRemaining=False, isSum=Tru
     # Show the plot
     plt.tight_layout()
     plt.show(block=True)
+    return time_str, str(today_phase1+today_phase2_all+today_phase3)
 
 def generateVolume5MinPlot(code, ndays, period):
     time9 = datetime.strptime('09:35:00', '%H:%M:%S')
