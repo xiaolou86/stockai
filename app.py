@@ -954,9 +954,9 @@ def generateVolume1MinPlot(code, ndays, period, isFillRemaining=False, isSum=Tru
             print(today_all_volume)
 
     for i in range(0, minutes_range_len):
-        volumes_today[i] = round(volumes_today[i], 0)
+        volumes_today[i] = round(volumes_today[i]/1000000, 0)
     time_volumes = {
-            "昨日总量": yesterday_volume,
+            "昨日总量": round(yesterday_volume/1000000, 0),
             "09:35": volumes_today[5],
             "09:45": volumes_today[15],
             "10:00": volumes_today[30],
@@ -976,7 +976,7 @@ def generateVolume1MinPlot(code, ndays, period, isFillRemaining=False, isSum=Tru
             "14:45": volumes_today[226],
             "14:54": volumes_today[235],
             #"今日当前总成交量": today_phase2_all,
-            "今日总量": today_all_volume,
+            "今日总量": round(today_all_volume/1000000, 0),
     }
 
 
