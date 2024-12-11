@@ -935,9 +935,29 @@ def generateVolume1MinPlot(code, ndays, period, isFillRemaining=False, isSum=Tru
     now = datetime.now()
     time_str = now.strftime('%H:%M') 
 
+    daily_df=ak.stock_zh_a_daily(symbol=code, start_date="20241201", end_date="20251230")
+    #print(daily)
+    daily_len = len(daily_df)
+    print(daily_df)
+
+    today = datetime.now()
+    yesterday = today - timedelta(days=1)
+
+    yesterday_volume = 0
+    today_all_volume = 0
+    for i in range(0, daily_len):
+        if yesterday.date() == daily_df["date"][i]:
+            yesterday_volume = daily_df["volume"][i]
+            print(yesterday_volume)
+        elif today.date() == daily_df["date"][i]:
+            today_all_volume = daily_df["volume"][i]
+            print(today_all_volume)
+
     for i in range(0, minutes_range_len):
         volumes_today[i] = round(volumes_today[i], 0)
     time_volumes = {
+            "昨日总量": yesterday_volume,
+            "09:35": volumes_today[5],
             "09:45": volumes_today[15],
             "10:00": volumes_today[30],
             "10:15": volumes_today[45],
@@ -946,6 +966,7 @@ def generateVolume1MinPlot(code, ndays, period, isFillRemaining=False, isSum=Tru
             "11:00": volumes_today[90],
             "11:15": volumes_today[105],
             "11:27": volumes_today[117],
+            "13:05": volumes_today[126],
             "13:15": volumes_today[136],
             "13:30": volumes_today[151],
             "13:45": volumes_today[166],
@@ -954,6 +975,8 @@ def generateVolume1MinPlot(code, ndays, period, isFillRemaining=False, isSum=Tru
             "14:30": volumes_today[211],
             "14:45": volumes_today[226],
             "14:54": volumes_today[235],
+            #"今日当前总成交量": today_phase2_all,
+            "今日总量": today_all_volume,
     }
 
 

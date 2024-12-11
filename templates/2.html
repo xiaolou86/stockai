@@ -28,10 +28,10 @@
     <!-- Form to collect parameters -->
     <form id="param-form">
         <label for="code">Enter stock code (sh000001, sh600000, sz000001):</label><br>
-	<input type="text" id="code" name="code" value="{{ request.form['code'] if request.method == 'POST' else 'sh000001'}}"><br><br>
+        <input type="text" id="code" name="code" value="{{ request.form['code'] if request.method == 'POST' else 'sh000001'}}"><br><br>
 
         <label for="days">Enter n days (n<=40):</label><br>
-	<input type="text" id="days" name="days" value="{{ request.form['days'] if request.method == 'POST' else '1'}}"><br><br>
+        <input type="text" id="days" name="days" value="{{ request.form['days'] if request.method == 'POST' else '1'}}"><br><br>
         <br>
         <button type="button" id="fetch-button">Fetch Data</button>
     </form>
@@ -81,14 +81,29 @@
                     const tableBody = document.getElementById('info-table').querySelector('tbody');
                     tableBody.innerHTML = ''; // Clear existing rows
                     for (const [key, value] of Object.entries(data.info)) {
-                        const row = document.createElement('tr');
-                        const keyCell = document.createElement('td');
-                        const valueCell = document.createElement('td');
-                        keyCell.textContent = key;
-                        valueCell.textContent = value;
-                        row.appendChild(keyCell);
-                        row.appendChild(valueCell);
-                        tableBody.appendChild(row);
+                        if (key == "昨日总量") {
+                                const row = document.createElement('tr');
+                                const keyCell = document.createElement('td');
+                                const valueCell = document.createElement('td');
+                                keyCell.textContent = key;
+                                valueCell.textContent = value;
+                                row.appendChild(keyCell);
+                                row.appendChild(valueCell);
+                                tableBody.appendChild(row);
+                                break;
+                        }
+                    }
+                    for (const [key, value] of Object.entries(data.info)) {
+                        if (key != "昨日总量") {
+                                const row = document.createElement('tr');
+                                const keyCell = document.createElement('td');
+                                const valueCell = document.createElement('td');
+                                keyCell.textContent = key;
+                                valueCell.textContent = value;
+                                row.appendChild(keyCell);
+                                row.appendChild(valueCell);
+                                tableBody.appendChild(row);
+                        }
                     }
                 })
                 .catch(error => {
