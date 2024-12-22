@@ -45,6 +45,9 @@
             <tr>
                 <th>时间</th>
                 <th>预估量</th>
+                <th>当前估计值/之前交易日</th>
+                <th>10点为基准</th>
+                <th>外盘/内盘</th>
             </tr>
         </thead>
         <tbody></tbody>
@@ -84,11 +87,13 @@
                         if (key == "昨日总量") {
                                 const row = document.createElement('tr');
                                 const keyCell = document.createElement('td');
-                                const valueCell = document.createElement('td');
                                 keyCell.textContent = key;
-                                valueCell.textContent = value;
                                 row.appendChild(keyCell);
-                                row.appendChild(valueCell);
+				value.forEach(val => {
+                                	const valueCell = document.createElement('td');
+                                	valueCell.textContent = val;
+                                	row.appendChild(valueCell);
+				})
                                 tableBody.appendChild(row);
                                 break;
                         }
@@ -97,11 +102,13 @@
                         if (key != "昨日总量") {
                                 const row = document.createElement('tr');
                                 const keyCell = document.createElement('td');
-                                const valueCell = document.createElement('td');
                                 keyCell.textContent = key;
-                                valueCell.textContent = value;
                                 row.appendChild(keyCell);
-                                row.appendChild(valueCell);
+				value.forEach(val => {
+                                	const valueCell = document.createElement('td');
+                                	valueCell.textContent = val;
+                                	row.appendChild(valueCell);
+				})
                                 tableBody.appendChild(row);
                         }
                     }

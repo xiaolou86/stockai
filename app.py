@@ -955,28 +955,34 @@ def generateVolume1MinPlot(code, ndays, period, isFillRemaining=False, isSum=Tru
 
     for i in range(0, minutes_range_len):
         volumes_today[i] = round(volumes_today[i]/1000000, 0)
+    yesterday_volume2 = round(yesterday_volume/1000000, 0)
+    if yesterday_volume2 == 0:
+        yesterday_volume2 = 1
+    base_10clock = volumes_today[30]
+    if base_10clock == 0:
+        base_10clock = 1
     time_volumes = {
-            "昨日总量": round(yesterday_volume/1000000, 0),
-            "09:35": volumes_today[5],
-            "09:45": volumes_today[15],
-            "10:00": volumes_today[30],
-            "10:15": volumes_today[45],
-            "10:30": volumes_today[60],
-            "10:45": volumes_today[75],
-            "11:00": volumes_today[90],
-            "11:15": volumes_today[105],
-            "11:27": volumes_today[117],
-            "13:05": volumes_today[126],
-            "13:15": volumes_today[136],
-            "13:30": volumes_today[151],
-            "13:45": volumes_today[166],
-            "14:00": volumes_today[181],
-            "14:15": volumes_today[196],
-            "14:30": volumes_today[211],
-            "14:45": volumes_today[226],
-            "14:54": volumes_today[235],
+            "昨日总量": [round(yesterday_volume/1000000, 0),0,0,0],
+            "09:35": [volumes_today[5],  volumes_today[5]  /yesterday_volume2,  0,0],
+            "09:45": [volumes_today[15], volumes_today[15] /yesterday_volume2,  0,0],
+            "10:00": [volumes_today[30], volumes_today[30] /yesterday_volume2, volumes_today[30] / base_10clock, 0],
+            "10:15": [volumes_today[45], volumes_today[45] /yesterday_volume2, volumes_today[45] / base_10clock, 0],
+            "10:30": [volumes_today[60], volumes_today[60] /yesterday_volume2, volumes_today[60] / base_10clock, 0],
+            "10:45": [volumes_today[75], volumes_today[75] /yesterday_volume2, volumes_today[75] / base_10clock, 0],
+            "11:00": [volumes_today[90], volumes_today[90] /yesterday_volume2, volumes_today[90] / base_10clock, 0],
+            "11:15": [volumes_today[105],volumes_today[105]/yesterday_volume2, volumes_today[105]/ base_10clock, 0],
+            "11:27": [volumes_today[117],volumes_today[117]/yesterday_volume2, volumes_today[117]/ base_10clock, 0],
+            "13:05": [volumes_today[126],volumes_today[126]/yesterday_volume2, volumes_today[126]/ base_10clock, 0],
+            "13:15": [volumes_today[136],volumes_today[136]/yesterday_volume2, volumes_today[136]/ base_10clock, 0],
+            "13:30": [volumes_today[151],volumes_today[151]/yesterday_volume2, volumes_today[151]/ base_10clock, 0],
+            "13:45": [volumes_today[166],volumes_today[166]/yesterday_volume2, volumes_today[166]/ base_10clock, 0],
+            "14:00": [volumes_today[181],volumes_today[181]/yesterday_volume2, volumes_today[181]/ base_10clock, 0],
+            "14:15": [volumes_today[196],volumes_today[196]/yesterday_volume2, volumes_today[196]/ base_10clock, 0],
+            "14:30": [volumes_today[211],volumes_today[211]/yesterday_volume2, volumes_today[211]/ base_10clock, 0],
+            "14:45": [volumes_today[226],volumes_today[226]/yesterday_volume2, volumes_today[226]/ base_10clock, 0],
+            "14:54": [volumes_today[235],volumes_today[235]/yesterday_volume2, volumes_today[235]/ base_10clock, 0],
             #"今日当前总成交量": today_phase2_all,
-            "今日总量": round(today_all_volume/1000000, 0),
+            "今日总量": [round(today_all_volume/1000000, 0),0,0,0]
     }
 
 
