@@ -704,11 +704,13 @@ def generateVolume1MinPlot(code, ndays, period, isFillRemaining=False, isSum=Tru
 
     minutes_range1 = pd.date_range(start='09:31:00', end='11:30:00', freq='1min')
     minutes_range2 = pd.date_range(start='13:01:00', end='15:00:00', freq='1min')
-    minutes_range = minutes_range1.append(minutes_range2)
 
-    volumes_total = [float(0) for i in range(len(minutes_range))]
-    volumes_multiple = [int(0) for i in range(len(minutes_range))]
-    volumes_today = [float(0) for i in range(len(minutes_range))]
+    range_len = len(minutes_range1) + len(minutes_range2)
+
+
+    volumes_total = [float(0) for i in range(range_len)]
+    volumes_multiple = [int(0) for i in range(range_len)]
+    volumes_today = [float(0) for i in range(range_len)]
 
     today = datetime.today()
     today_date = today.strftime('%Y-%m-%d')
@@ -738,12 +740,11 @@ def generateVolume1MinPlot(code, ndays, period, isFillRemaining=False, isSum=Tru
             volumes_multiple[index] += 1
 
     # calc the average
-    minutes_range_len = len(minutes_range)
     today_latest_index = 0
 
     # 去掉头尾
     begin_one = 1
-    last_one = minutes_range_len-2
+    last_one = range_len-2
     for i in range(0, last_one+1):
         if volumes_multiple[i] >= 1:
             volumes_total[i] = volumes_total[i]/volumes_multiple[i]
@@ -758,7 +759,7 @@ def generateVolume1MinPlot(code, ndays, period, isFillRemaining=False, isSum=Tru
 
     # 今天结束了
     if today_latest_index == 0 and volumes_today[0] != 0:
-        today_latest_index = minutes_range_len-2
+        today_latest_index = range_len-2
 
     ####### no need to calc phase1 and phase3
     total_phase2_latest = volumes_total[today_latest_index]
@@ -772,7 +773,7 @@ def generateVolume1MinPlot(code, ndays, period, isFillRemaining=False, isSum=Tru
 
     for i in range(begin_one, today_latest_index+1):
         #这个值保存的是当下时间点估计的交易总额
-        volumes_today[i] = 1.0*total_phase2_all/volumes_total[i]*volumes_today[i] + volumes_today[0] + volumes_total[minutes_range_len-1]
+        volumes_today[i] = 1.0*total_phase2_all/volumes_total[i]*volumes_today[i] + volumes_today[0] + volumes_total[range_len-1]
 
     today_phase2_all = volumes_today[today_latest_index]
     # 直接取之前的,不按比例
@@ -781,49 +782,32 @@ def generateVolume1MinPlot(code, ndays, period, isFillRemaining=False, isSum=Tru
     if not isSum:
         # 去掉头尾，为了减少曲线的取值区间
         volumes_today[0] = volumes_today[begin_one]
-        volumes_today[minutes_range_len-1] = volumes_today[last_one-1]
-        volumes_today[minutes_range_len-2] = volumes_today[last_one-1]
+        volumes_today[range_len-1] = volumes_today[last_one-1]
+        volumes_today[range_len-2] = volumes_today[last_one-1]
 
-
-    df = pd.DataFrame(minutes_range, columns=['timestamp'])
-    df['volumes_total'] = volumes_total
-    df['volumes_today'] = volumes_today
-
-
-    # Set the 'timestamp' column as the index
-    df.set_index('timestamp', inplace=True)
-
-    #print("Original DataFrame:")
-    #print(df)
-
-    # Define the time ranges to remove
-    drop_ranges = [
-        (pd.Timestamp('11:31:00'), pd.Timestamp('12:59:00')),
-        (pd.Timestamp('09:00:00'), pd.Timestamp('09:14:00'))
-    ]
-    # Remove the specified time ranges
-    for start_time, end_time in drop_ranges:
-        print(start_time)
-        df = df.drop(df[start_time:end_time].index)
-
-    print("\nDataFrame after removing specified time range:")
-
-    # Plotting the data
+    # 创建一个连续的时间索引，但实际值会被映射到正确的交易时间
+    continuous_index = pd.RangeIndex(len(minutes_range1) + len(minutes_range2))
+    # 创建映射字典，将连续索引映射到实际时间
+    time_mapping = {}
+    for i, time in enumerate(minutes_range1):
+        time_mapping[i] = time
+    for i, time in enumerate(minutes_range2):
+        time_mapping[i + len(minutes_range1)] = time
+    # 修改绘图部分
     plt.figure(figsize=(18, 8))
-
-    plt.plot(df.index, df['volumes_today'], marker='.', markersize=2, linestyle='-', label="today volume (1 minutes)")
-
-    # Customize the x-axis ticks
-    plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
-    plt.gca().xaxis.set_major_locator(mdates.MinuteLocator(interval=1))  # Adjust the interval as needed
-
-
-    # Custom ticks and labels
-    all_ticks = minutes_range
-    tick_labels = [tick.strftime('%H:%M') for tick in minutes_range]
-
-    # Set custom ticks and labels
-    plt.xticks(ticks=all_ticks, labels=tick_labels, rotation=45)
+    # 使用连续索引绘图
+    plt.plot(continuous_index, volumes_today, marker='.', markersize=2, linestyle='-', label="today volume (1 minutes)")
+    # 自定义x轴刻度
+    def format_xaxis(x, p):
+        if x < 0:
+            return ''
+        if x < len(minutes_range1):
+            return time_mapping[x].strftime('%H:%M')
+        elif x < len(minutes_range1) + len(minutes_range2):
+            return time_mapping[x].strftime('%H:%M')
+        return ''
+    plt.gca().xaxis.set_major_formatter(plt.FuncFormatter(format_xaxis))
+    plt.gca().xaxis.set_major_locator(plt.MaxNLocator(20))  # 控制刻度数量
 
     # Customize the plot to display axes
     plt.grid(True)  # Show grid lines
@@ -853,7 +837,7 @@ def generateVolume1MinPlot(code, ndays, period, isFillRemaining=False, isSum=Tru
             today_all_volume = daily_df["volume"][i]
             print(today_all_volume)
 
-    for i in range(0, minutes_range_len):
+    for i in range(0, range_len):
         volumes_today[i] = round(volumes_today[i]/1000000, 0)
     yesterday_volume2 = round(yesterday_volume/1000000, 0)
     if yesterday_volume2 == 0:
@@ -883,7 +867,7 @@ def generateVolume1MinPlot(code, ndays, period, isFillRemaining=False, isSum=Tru
             "14:54": [volumes_today[235],volumes_today[235]/yesterday_volume2, volumes_today[235]/ base_10clock, 0],
             #"今日当前总成交量": today_phase2_all,
             "今日总量": [round(today_all_volume/1000000, 0),0,0,0]
-    }
+            }
 
 
     plt.title(title)
@@ -954,9 +938,9 @@ def generateVolume5MinPlot(code, ndays, period):
             volumes_multiple[index] += 1
 
     # calc the average
-    minutes_range_len = len(minutes_range)
+    range_len = len(minutes_range)
     today_latest_index = 0
-    for i in range(minutes_range_len):
+    for i in range(range_len):
         if volumes_multiple[i] >= 1:
             volumes_total[i] = volumes_total[i]/volumes_multiple[i]
         if i == 0:
@@ -970,17 +954,17 @@ def generateVolume5MinPlot(code, ndays, period):
 
     # 有可能今天结束了
     if today_latest_index == 0:
-        today_latest_index = minutes_range_len-2
+        today_latest_index = range_len-2
 
     total_phase1 = volumes_total[0]
     total_phase2_latest = volumes_total[today_latest_index] - total_phase1
-    total_phase2_all = volumes_total[minutes_range_len-2] - total_phase1
-    total_phase3 = volumes_total[minutes_range_len-1] - volumes_total[minutes_range_len-2]
+    total_phase2_all = volumes_total[range_len-2] - total_phase1
+    total_phase3 = volumes_total[range_len-1] - volumes_total[range_len-2]
     print(total_phase1)
     print(total_phase2_latest)
     print(total_phase2_all)
     print(total_phase3)
-    print(volumes_total[minutes_range_len-1])
+    print(volumes_total[range_len-1])
 
     today_phase1 = volumes_today[0]
     today_phase2_latest = volumes_today[today_latest_index] - today_phase1
@@ -992,7 +976,7 @@ def generateVolume5MinPlot(code, ndays, period):
     print(today_phase2_latest)
     print(today_phase2_all)
     print(today_phase3)
-    print(volumes_today[minutes_range_len-1])
+    print(volumes_today[range_len-1])
 
 
     df = pd.DataFrame(minutes_range, columns=['timestamp'])
@@ -1008,9 +992,9 @@ def generateVolume5MinPlot(code, ndays, period):
 
     # Define the time ranges to remove
     drop_ranges = [
-        (pd.Timestamp('11:31:00'), pd.Timestamp('12:59:00')),
-        (pd.Timestamp('09:00:00'), pd.Timestamp('09:14:00'))
-    ]
+            (pd.Timestamp('11:31:00'), pd.Timestamp('12:59:00')),
+            (pd.Timestamp('09:00:00'), pd.Timestamp('09:14:00'))
+            ]
     # Remove the specified time ranges
     for start_time, end_time in drop_ranges:
         print(start_time)
@@ -1103,13 +1087,13 @@ def generatePlot(code, ndays):
     #volumes = stock_zh_a_minute_df['volume']
 
     stock_zh_a_minute_df = bond_zh_hs_cov_min(
-        symbol=code,
-        period="5",
-        adjust="",
-        start_date="1979-09-01 09:32:00",
-        end_date="2222-01-01 09:32:00",
-        ndays=ndays,
-    )
+            symbol=code,
+            period="5",
+            adjust="",
+            start_date="1979-09-01 09:32:00",
+            end_date="2222-01-01 09:32:00",
+            ndays=ndays,
+            )
     print(stock_zh_a_minute_df)
 
     minutes = stock_zh_a_minute_df['时间']
@@ -1150,9 +1134,9 @@ def generatePlot(code, ndays):
 
     # Define the time ranges to remove
     drop_ranges = [
-        (pd.Timestamp('11:31:00'), pd.Timestamp('12:59:00')),
-        (pd.Timestamp('09:00:00'), pd.Timestamp('09:14:00'))
-    ]
+            (pd.Timestamp('11:31:00'), pd.Timestamp('12:59:00')),
+            (pd.Timestamp('09:00:00'), pd.Timestamp('09:14:00'))
+            ]
     # Remove the specified time ranges
     for start_time, end_time in drop_ranges:
         print(start_time)
