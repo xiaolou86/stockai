@@ -713,23 +713,6 @@ def generateVolume1MinPlot(code, ndays, period, isFillRemaining=False, isSum=Tru
     today = datetime.today()
     today_date = today.strftime('%Y-%m-%d')
 
-    #stock_zh_a_minute_df = ak.stock_zh_a_minute(symbol='sh000001', period='1', adjust="")
-    #print(stock_zh_a_minute_df)
-    #minutes = stock_zh_a_minute_df['day']
-    #volumes = stock_zh_a_minute_df['volume']
-
-    """
-    stock_zh_a_minute_df = bond_zh_hs_cov_min(
-        symbol=code,
-        period="5",
-        adjust="",
-        start_date="1979-09-01 09:32:00",
-        end_date="2222-01-01 09:32:00",
-        ndays=ndays,
-    )
-    minutes = stock_zh_a_minute_df['时间']
-    volumes = stock_zh_a_minute_df['成交额']
-    """
     #stock_zh_a_minute_df = ak.stock_zh_a_minute(symbol=code, period="5")
     stock_zh_a_minute_df = stock_zh_a_minute_my(symbol=code, period="1", days=ndays)
     print(stock_zh_a_minute_df)
@@ -801,58 +784,6 @@ def generateVolume1MinPlot(code, ndays, period, isFillRemaining=False, isSum=Tru
         volumes_today[minutes_range_len-1] = volumes_today[last_one-1]
         volumes_today[minutes_range_len-2] = volumes_today[last_one-1]
 
-    """
-    ####### ok to calc phase1 and phase3
-    total_phase1 = volumes_total[0]
-    total_phase2_latest = volumes_total[today_latest_index] - total_phase1
-    total_phase2_all = volumes_total[minutes_range_len-2] - total_phase1
-    total_phase3 = volumes_total[minutes_range_len-1] - volumes_total[minutes_range_len-2]
-    print(total_phase1)
-    print(total_phase2_latest)
-    print(total_phase2_all)
-    print(total_phase3)
-    print(volumes_total[minutes_range_len-1])
-
-    today_phase1 = volumes_today[0]
-    today_phase2_latest = volumes_today[today_latest_index] - today_phase1
-
-    if today_latest_index < 1:
-        # time is <= 9:30 or >= 15:00
-        pass
-    else:
-        # the other time
-        if isFillRemaining:
-            # 按比例估算
-            rate = today_phase2_latest*1.0/total_phase2_latest
-            for i in range(today_latest_index+1, minutes_range_len-1):
-                volumes_today[i] = rate*(volumes_total[i]-total_phase1) + today_phase1
-
-            # phase3: assumed to equal to total_phase3
-            volumes_today[minutes_range_len-1] = volumes_today[minutes_range_len-2] + total_phase3
-
-    today_phase2_all = 1.0*today_phase2_latest/total_phase2_latest*total_phase2_all
-    # 直接取之前的,不按比例
-    today_phase3 = total_phase3
-    print(today_phase1)
-    print(today_phase2_latest)
-    print(today_phase2_all)
-    print(today_phase3)
-    print(volumes_today[minutes_range_len-1])
-
-    if not isSum:
-        for i in range(minutes_range_len-1, 0, -1):
-            volumes_total[i] -= volumes_total[i-1]
-            volumes_today[i] -= volumes_today[i-1]
-
-        # 去掉头尾
-        volumes_today[0] = 0
-        volumes_today[1] = 0
-        volumes_today[2] = 0
-        volumes_today[minutes_range_len-1] = 0
-        volumes_today[minutes_range_len-2] = 0
-        volumes_today[minutes_range_len-3] = 0
-        volumes_today[minutes_range_len-4] = 0
-    """
 
     df = pd.DataFrame(minutes_range, columns=['timestamp'])
     df['volumes_total'] = volumes_total
@@ -876,30 +807,11 @@ def generateVolume1MinPlot(code, ndays, period, isFillRemaining=False, isSum=Tru
         df = df.drop(df[start_time:end_time].index)
 
     print("\nDataFrame after removing specified time range:")
-    #print(df)
 
     # Plotting the data
     plt.figure(figsize=(18, 8))
 
-    """
-    # Set the Chinese font
-    plt.rcParams['font.sans-serif'] = ['AR PL UMing CN']  # Specify the font family
-    plt.rcParams['axes.unicode_minus'] = False  # Ensure minus sign is displayed correctly
-    """
-
-    ### Plot
-    #plt.plot(use_index=True, y='volumes_total', marker='o', linestyle='-')
-    #plt.plot(use_index=True, y='volumes_today', marker='o', linestyle='-')
-    #df.plot(y='volumes_total', use_index=True, marker='o', linestyle='-')
-    #df.plot(y='volumes_today', use_index=True, marker='o', linestyle='-')
-
-    #plt.plot(df.index, df['volumes_total'], marker='.', markersize=2, linestyle='-', label="n days' average volume (1 minutes)")
     plt.plot(df.index, df['volumes_today'], marker='.', markersize=2, linestyle='-', label="today volume (1 minutes)")
-
-    """
-    plt.plot(df["timestamp"], df['volumes_total'], marker='o', linestyle='-', label="n days' average")
-    plt.plot(df["timestamp"], df['volumes_today'], marker='o', linestyle='-', label="today's value")
-    """
 
     # Customize the x-axis ticks
     plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
@@ -912,18 +824,6 @@ def generateVolume1MinPlot(code, ndays, period, isFillRemaining=False, isSum=Tru
 
     # Set custom ticks and labels
     plt.xticks(ticks=all_ticks, labels=tick_labels, rotation=45)
-
-
-
-    ## Create a plot
-    ##plt.plot(x, y)
-    ##plt.plot(x, y2)
-    #plt.plot(minutes, transaction_amounts, marker='o', linestyle='-')
-    ## Customize the x-axis ticks
-    #plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
-    #plt.gca().xaxis.set_major_locator(mdates.MinuteLocator(interval=10))
-    #plt.gcf().autofmt_xdate()  # Rotate and align the x-axis labels
-
 
     # Customize the plot to display axes
     plt.grid(True)  # Show grid lines
