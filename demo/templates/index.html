@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fetch Data Example</title>
+    <style>
+        table {
+            margin-top: 20px;
+            border-collapse: collapse;
+            width: 100%;
+        }
+        th, td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: left;
+        }
+        img {
+            margin-top: 20px;
+            max-width: 200px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Fetch Data Example</h1>
+
+    <!-- Form to collect parameters -->
+    <form id="param-form">
+        <label for="param1">Parameter 1:</label>
+        <input type="text" id="param1" name="param1" required>
+        <br>
+        <label for="param2">Parameter 2:</label>
+        <input type="text" id="param2" name="param2" required>
+        <br>
+        <button type="button" id="fetch-button">Fetch Data</button>
+    </form>
+
+    <!-- Image display -->
+    <img id="dynamic-image" alt="Dynamic Image">
+
+    <!-- Table to display key-value data -->
+    <table id="info-table">
+        <thead>
+            <tr>
+                <th>Key</th>
+                <th>Value</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <script>
+        document.getElementById('fetch-button').addEventListener('click', () => {
+            // Get input values
+            const param1 = document.getElementById('param1').value;
+            const param2 = document.getElementById('param2').value;
+
+            // Validate inputs
+            if (!param1 || !param2) {
+                alert('Please fill in both parameters.');
+                return;
+            }
+
+            // API URL
+            const apiUrl = `/get_image_json?param1=${encodeURIComponent(param1)}&param2=${encodeURIComponent(param2)}`;
+
+            // Fetch request
+            fetch(apiUrl)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Display image
+                    document.getElementById('dynamic-image').src = 'data:image/gif;base64,' + data.image;
+
+                    // Populate table
+                    const tableBody = document.getElementById('info-table').querySelector('tbody');
+                    tableBody.innerHTML = ''; // Clear existing rows
+                    for (const [key, value] of Object.entries(data.info)) {
+                        const row = document.createElement('tr');
+                        const keyCell = document.createElement('td');
+                        const valueCell = document.createElement('td');
+                        keyCell.textContent = key;
+                        valueCell.textContent = value;
+                        row.appendChild(keyCell);
+                        row.appendChild(valueCell);
+                        tableBody.appendChild(row);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching data:', error);
+                    alert(`Error fetching data: ${error.message}`);
+                });
+        });
+    </script>
+</body>
+</html>
+
